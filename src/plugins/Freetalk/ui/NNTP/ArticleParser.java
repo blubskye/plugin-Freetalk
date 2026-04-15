@@ -49,6 +49,13 @@ public class ArticleParser {
 	/** Message-ID of previous message */
 	private String parentID;
 
+	/**
+	 * Message-ID of the NNTP thread root (first element of the References: header).
+	 * Null when there is no References header or the message is a new thread.
+	 * Used to correctly route replies to forked threads.
+	 */
+	private String threadRootID;
+
 	/** Body of message */
 	private String text;
 	
@@ -71,6 +78,7 @@ public class ArticleParser {
 		boards = null;
 		replyToBoard = null;
 		parentID = null;
+		threadRootID = null;
 		text = null;
 	}
 
@@ -98,6 +106,15 @@ public class ArticleParser {
 		if(parentID == null)
 			throw new NoSuchFieldException(); /* TODO: Also throw this in the other getter functions */
 		return parentID;
+	}
+
+	/**
+	 * Returns the NNTP thread root message ID (the first element of the References: header),
+	 * or null if there is no References header or only one entry (direct new thread).
+	 * This is used to correctly identify forked-thread roots when posting NNTP replies.
+	 */
+	public String getThreadRootID() {
+		return threadRootID;
 	}
 
 	public String getText() {
@@ -591,8 +608,14 @@ public class ArticleParser {
 		}
 		else if (referencesHeader != null) {
 			ArrayList<String> refs = parseReferences(referencesHeader);
-			if (!refs.isEmpty())
+			if (!refs.isEmpty()) {
 				parentID = refs.get(refs.size() - 1);
+				// The first element is the NNTP thread root.
+				// If refs has only one entry, parentID == threadRootID (same message), so leave
+				// threadRootID null to let the handler fall back to the simple isThread() logic.
+				if (refs.size() > 1)
+					threadRootID = refs.get(0);
+			}
 		}
 
 		if (transferEncodingHeader != null)

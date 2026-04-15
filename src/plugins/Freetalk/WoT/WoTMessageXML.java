@@ -257,9 +257,16 @@ public final class WoTMessageXML {
 		}
 		
 		// Title / body
-		
-		final String messageTitle = messageElement.getElementsByTagName("Subject").item(0).getTextContent();
-		final String messageBody = messageElement.getElementsByTagName("Body").item(0).getTextContent();
+		// BUG: item(0) returns null when the element is absent; guard against NPE.
+		final org.w3c.dom.Node subjectNode = messageElement.getElementsByTagName("Subject").item(0);
+		if(subjectNode == null)
+			throw new Exception("Message XML is missing required <Subject> element");
+		final String messageTitle = subjectNode.getTextContent();
+
+		final org.w3c.dom.Node bodyNode = messageElement.getElementsByTagName("Body").item(0);
+		if(bodyNode == null)
+			throw new Exception("Message XML is missing required <Body> element");
+		final String messageBody = bodyNode.getTextContent();
 		
 		// Attachments
 		

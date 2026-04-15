@@ -86,11 +86,19 @@ public final class FCPInterface implements FredPluginFCP {
                 throw new Exception("Specified message is empty");
             }
 
+            // SEC-2: State-mutating and privacy-sensitive commands are only available to
+            // intra-node (plugin-to-plugin) callers. External FCP clients get ACCESS_DIRECT=0
+            // only when they are the same JVM; ACCESS_FCP_RESTRICTED=1 and ACCESS_FCP_FULL=2
+            // indicate remote TCP clients that have not been authenticated as the local node.
+            final boolean isDirectCaller = (accesstype == FredPluginFCP.ACCESS_DIRECT);
+
             if (message.equals("ListBoards")) {
                 handleListBoards(replysender, params);
             } else if (message.equals("ListSubscribedBoards")) {
                 handleListSubscribedBoards(replysender, params);
             } else if (message.equals("ListOwnIdentities")) {
+                // SEC-2: Own identity list reveals local user data; restrict to intra-node.
+                if (!isDirectCaller) throw new Exception("ListOwnIdentities requires direct (intra-node) access");
                 handleListOwnIdentities(replysender, params);
             } else if (message.equals("ListKnownIdentities")) {
                 handleListKnownIdentities(replysender, params);
@@ -104,15 +112,25 @@ public final class FCPInterface implements FredPluginFCP {
             } else if (message.equals("GetMessage")) {
                 handleGetMessage(replysender, params);
             } else if (message.equals("PutMessage")) {
+                // SEC-2: Only intra-node callers may post messages on behalf of the local user.
+                if (!isDirectCaller) throw new Exception("PutMessage requires direct (intra-node) access");
                 handlePutMessage(replysender, params, data);
 
             } else if (message.equals("CreateBoard")) {
+                // SEC-2: Board creation modifies local state; restrict to intra-node.
+                if (!isDirectCaller) throw new Exception("CreateBoard requires direct (intra-node) access");
                 handleCreateBoard(replysender, params);
             } else if (message.equals("CreateOwnIdentity")) {
+                // SEC-2: Identity creation modifies WoT state; restrict to intra-node.
+                if (!isDirectCaller) throw new Exception("CreateOwnIdentity requires direct (intra-node) access");
                 handleCreateOwnIdentity(replysender, params);
             } else if (message.equals("SubscribeToBoard")) {
+                // SEC-2: Subscription changes local state; restrict to intra-node.
+                if (!isDirectCaller) throw new Exception("SubscribeToBoard requires direct (intra-node) access");
             	handleSubscribeToBoard(replysender, params);
         	} else if (message.equals("UnsubscribeFromBoard")) {
+                // SEC-2: Subscription changes local state; restrict to intra-node.
+                if (!isDirectCaller) throw new Exception("UnsubscribeFromBoard requires direct (intra-node) access");
             	handleUnsubscribeFromBoard(replysender, params);
         	}
             else if (message.equals("Status")) {

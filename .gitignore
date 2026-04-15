@@ -3,3 +3,7 @@ build/
 build-test/
 dist/
 .gradle/
+
+# Local audit/patch docs — not for upstream
+AUDIT*.md
+docs/security/

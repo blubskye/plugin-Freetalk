@@ -862,12 +862,26 @@ public final class FreetalkNNTPHandler implements Runnable {
                     catch (NoSuchMessageException e) {
                         parentMessage = null;
                     }
-                    
-                	// FIXME: When replying to forked threads, this code will always sent the replies to the original thread. We need to find a way
-                	// to figure out whether the user wanted to reply to a forked thread - does NNTP pass a thread ID?
-                    
+
+                    // Determine the parent thread URI.
+                    // Strategy:
+                    //   1. If the NNTP References header has multiple entries, its first element
+                    //      is the NNTP-level thread root. Look it up and use its URI directly —
+                    //      this correctly handles forked threads where the root message has
+                    //      isThread()==false but is being used as a thread root by existing replies.
+                    //   2. Fall back to the classic heuristic: if the direct parent isThread(),
+                    //      use its URI; otherwise use its getThreadURI().
                     MessageURI parentMessageURI = null;
-                    if (parentMessage != null) {
+                    final String threadRootID = parser.getThreadRootID();
+                    if (threadRootID != null) {
+                        try {
+                            final Message threadRoot = mMessageManager.get(threadRootID);
+                            parentMessageURI = threadRoot.getURI();
+                        } catch (NoSuchMessageException e) {
+                            // Thread root not yet downloaded; fall through to heuristic below.
+                        }
+                    }
+                    if (parentMessageURI == null && parentMessage != null) {
                         parentMessageURI = parentMessage.isThread() ? parentMessage.getURI() : parentMessage.getThreadURI();
                     }
 
